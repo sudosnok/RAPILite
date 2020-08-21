@@ -1,4 +1,3 @@
-"""
 MIT License
 
 Copyright (c) 2020 - sudosnok
@@ -19,27 +18,4 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE."""
-
-from datetime import datetime
-import re
-from typing import Optional, Tuple
-
-
-URL_RE = r"(https?:\/\/www.redd)(.it|it.com)\/r\/(\w*)\/?(\w*)?"
-# group 3 is the sub
-# group 4 is either the method, empty or `comments`
-
-
-def parse_dt(timestamp: float) -> datetime:
-    return datetime.fromtimestamp(timestamp)
-
-
-def is_post(url: str) -> Tuple[bool, str, Optional[str]]:
-    # use regex to extract group 3 (sub) and group 4 ([method]), `True, sub, None` or False, sub, method
-    match = re.search(URL_RE, url)
-    sub, method = match.groups()[2:]
-    if method == 'comments':
-        return True, sub, None
-    return False, sub, method
-
+SOFTWARE.
