@@ -276,3 +276,5 @@ class Reddit:
 
 """TODO: put types and the two utils functions into their own files"""
 """TODO: fix the get_event_loop mess in ResponseData"""
+"""TODO: make MediaInfo look for picture data too"""
+
