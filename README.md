@@ -9,6 +9,8 @@ From here we can simply import the class ready for use
 
 `from reddit import Reddit`
 
+---
+
 Example 1;
 Reddit as an iterator:
 ```
@@ -19,6 +21,8 @@ for post in Reddit('https://reddit.com/r/AskReddit'):
   # post.posted_at/edited_at will be a datetime.datetime object in utc
   # post.awards will be a collections.deque of Award objects, with attributes like .name, .url, .price, .count
 ```
+
+---
 
 Example 2;
 Reddit as a regular object;
@@ -32,6 +36,7 @@ for post in askreddit:
   post.comments # this should now be a populated deque of Comment objects for each post
   post.comments[n].awards # a deque of Award objects
 ```
+---
 
 Example 2.5;
 Reddit as a regular object from a classmethod;
