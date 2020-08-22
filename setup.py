@@ -11,8 +11,9 @@ setup(
     description='An asynchronous wrapper for Reddit\'s readonly API',
     long_description=None,
     url='https://github.com/sudosnok/RAPILite',
+    license='MIT',
+    include_package_data=True,
     author='sudosnok',
-    author_email=None,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -20,6 +21,6 @@ setup(
         "Programming Language :: Python :: 3.6"
     ],
     packages=['RAPILite'],
-    python_requires=">3.6, <4",
+    python_requires=">=3.6",
     install_requires=['aiohttp==3.6.2'],
 )
