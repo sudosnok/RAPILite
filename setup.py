@@ -20,7 +20,7 @@ setup(
         "License :: MIT License",
         "Programming Language :: Python :: 3.6"
     ],
-    packages=['Reddit'],
+    packages=['reddit'],
     python_requires=">=3.6",
     install_requires=['aiohttp==3.6.2'],
 )
