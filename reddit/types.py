@@ -38,12 +38,12 @@ class ResponseData:
         self.sub = sub
         self.posts = deque()
 
-        try:
+        try: # if an event loop is running, make a task and schedule it
             loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.get_event_loop()
-
-        self._data = data = loop.run_until_complete(coro)
+            task = asyncio.Task(coro, loop=loop)
+            self._data = data = task.result()
+        except RuntimeError: # get_running_loop will raise RuntimeError, so we'll use asyncio.run
+            self_data = data = asyncio.run(coro)
 
         if target == 'post':
             print(data.keys())
