@@ -1,6 +1,14 @@
 "# RAPILite" 
 This async wrapper is pretty simple to use
 
+To get started;
+
+`pip install RAPILite`
+
+From here we can simply import the class ready for use
+
+`from reddit import Reddit`
+
 Example 1;
 Reddit as an iterator:
 ```
