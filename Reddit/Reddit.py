@@ -27,7 +27,7 @@ from typing import Coroutine
 from datetime import datetime
 from collections import deque
 
-import utils
+from Reddit import utils
 
 
 class NotPopulated(Exception):
