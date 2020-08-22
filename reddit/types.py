@@ -40,7 +40,7 @@ class ResponseData:
 
         try: # if an event loop is running, make a task and schedule it
             loop = asyncio.get_running_loop()
-            task = asyncio.create_task(coro)
+            task = loop.create_task(coro)
             print(task, loop)
             self._data = data = task.result()
         except RuntimeError: # get_running_loop will raise RuntimeError, so we'll use asyncio.run
