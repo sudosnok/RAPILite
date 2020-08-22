@@ -60,7 +60,7 @@ class SubredditData:
             self.posts.append(PostData(post['data']))
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} sub={0.sub} posts={1}>".format(self, len(self.posts))
+        return "<{0.__class__.__name__} sub='{0.sub}' posts={1}>".format(self, len(self.posts))
 
 
 class PostData:
@@ -109,7 +109,7 @@ class PostData:
                 self.awards.append(Award(award))
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} author={0.author} title={0.title} num_comments={0.num_comments}>".format(self)
+        return "<{0.__class__.__name__} author='{0.author}' title='{0.title}' num_comments={0.num_comments}>".format(self)
 
 
 class Comment:
@@ -139,7 +139,7 @@ class Comment:
         self.populate_awards()
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} author={0.author} text={0.text} score={0.score}>".format(self)
+        return "<{0.__class__.__name__} author='{0.author}' text='{0.text}' score={0.score}>".format(self)
 
     def __str__(self) -> str:
         return self.text
@@ -183,7 +183,7 @@ class MediaInfo:
         return self.url
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} title={0.title} provider={0.provider} url={0.url}>".format(self)
+        return "<{0.__class__.__name__} title='{0.title}' provider='{0.provider}' url={0.url}>".format(self)
 
 
 class Award:
@@ -202,5 +202,5 @@ class Award:
         self.reward = data['coin_reward']
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} name={0.name} description={0.description} count={0.count}>".format(self)
+        return "<{0.__class__.__name__} name='{0.name}' description='{0.description}' count={0.count}>".format(self)
 
