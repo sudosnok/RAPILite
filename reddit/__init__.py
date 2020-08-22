@@ -27,4 +27,4 @@ from reddit.Reddit import Reddit
 
 __title__ = 'RAPILite'
 __author__ = 'sudosnok'
-__version__= '0.1.1'
+__version__= '0.1.2'
