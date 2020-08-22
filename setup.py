@@ -19,7 +19,7 @@ setup(
         "License :: MIT License",
         "Programming Language :: Python :: 3.6"
     ],
-    packages=find_packages(where='src'),
+    packages=['RAPILite'],
     python_requires=">3.6, <4",
     install_requires=['aiohttp==3.6.2'],
 )
