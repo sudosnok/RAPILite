@@ -21,9 +21,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
+from io import BytesIO
 from aiohttp import ClientSession
 from datetime import datetime
 from collections import deque
+from typing import Union
 
 from reddit import utils, types
 
@@ -78,6 +80,25 @@ class Reddit:
             comments = deque(data[1]['data']['children'])
             for comment in comments:
                 post.comments.append(types.Comment(comment['data']))
+
+    async def fetch(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
+        out = None
+        res = await self._cs.get(image.url)
+
+        if res.status == 200:
+            out = await res.read()
+        elif res.status == 403:
+            raise types.ForbiddenUrl("The url tied to this image returns 403 Forbidden; \n{0}".format(image.url))
+        else:
+            raise NotImplemented
+
+        if to_bytes:
+            return out
+
+        out = BytesIO(out)
+        out.seek(0)
+        return out
+
 
     async def _get_response(self) -> dict:
         res = await self._cs.get(self.url)

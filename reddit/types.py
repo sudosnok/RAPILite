@@ -29,11 +29,20 @@ from collections import deque
 from reddit import utils
 
 
+class ForbiddenUrl(Exception):
+    pass
+
+
 class ResponseData:
     def __init__(self, target, sub, coro: Coroutine):
         self.sub = sub
         self.posts = deque()
-        loop = asyncio.get_event_loop()
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
+
         self._data = data = loop.run_until_complete(coro)
 
         if target == 'post':
@@ -53,9 +62,9 @@ class SubredditData:
         self._data = data
         self.posts = deque()
 
-        self.populate_posts()
+        self._populate_posts()
 
-    def populate_posts(self):
+    def _populate_posts(self):
         for post in self._data:
             self.posts.append(PostData(post['data']))
 
@@ -96,13 +105,15 @@ class PostData:
 
         # media info
         self.media = MediaInfo(data)
+        self.source_image = None or self.media._source_image
+        self.images = self.media.images
 
         # comments
         self.comments = deque()
 
-        self.populate_awards()
+        self._populate_awards()
 
-    def populate_awards(self):
+    def _populate_awards(self):
         awards = self._data['all_awardings']
         if awards:
             for award in awards:
@@ -154,17 +165,51 @@ class Comment:
 class MediaInfo:
     def __init__(self, data: dict):
         self._data = data
-        self.title = self.provider = self.url = None
+        self.title = self.provider = None
+        self.url = data['url_overridden_by_dest']
+        self.images = deque()
+        self._source_image = None
+
+        if data['thumbnail'] != 'self':
+            self.thumbnail = data['thumbnail']
 
         if not data['secure_media']:
             return
 
-        try:    # if its gfycat or youtube
+        post_hint = data['post_hint']
+
+        if post_hint == 'image':
+            self._get_image_info()
+
+        if post_hint == 'rich:video':
+            self._get_video_info()
+
+    def __str__(self) -> str:
+        return self.url
+
+    def __repr__(self) -> str:
+        return "<{0.__class__.__name__} title='{0.title}' provider='{0.provider}' url={0.url}>".format(self)
+
+    def _get_image_info(self):
+        data: dict = self._data
+        preview = data['preview']
+        if preview['enabled']:
+            images = preview['images']
+            self._source_image = Image(images[0]['source'])
+            for image in images[0]['resolutions']:
+                try:
+                    self.images.append(Image(image))
+                except KeyError:
+                    break
+
+    def _get_video_info(self):
+        data: dict = self._data
+        try:  # if its gfycat or youtube
             secure = data['secure_media']['oembed']
             if secure['author'] == 'Gfycat':
                 # definitely gfycat
                 self.provider = secure['author']
-                self.url = data['url']
+                self.url = data['url_overridden_by_dest']
             else:
                 # is youtube
                 self.provider = secure['provider_name']
@@ -174,16 +219,15 @@ class MediaInfo:
         except (KeyError, IndexError):
             # is reddit domain
             self.provider = 'reddit'
-            self.url = data['url']
+            self.url = data['url_overridden_by_dest']
 
-        if data['thumbnail'] != 'self':
-            self.thumbnail = data['thumbnail']
 
-    def __str__(self) -> str:
-        return self.url
-
-    def __repr__(self) -> str:
-        return "<{0.__class__.__name__} title='{0.title}' provider='{0.provider}' url={0.url}>".format(self)
+class Image:
+    def __init__(self, data: dict):
+        self._data = data
+        self.width = data['width']
+        self.height = data['height']
+        self.url = data['url']
 
 
 class Award:
