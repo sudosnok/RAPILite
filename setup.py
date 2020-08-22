@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 import pathlib
 
 here = pathlib.Path(__file__).parent.resolve()
@@ -9,7 +9,7 @@ setup(
     name='RAPILite',
     version='0.1.1',
     description='An asynchronous wrapper for Reddit\'s readonly API',
-    long_description=None,
+    long_description=long_description,
     url='https://github.com/sudosnok/RAPILite',
     license='MIT',
     include_package_data=True,
