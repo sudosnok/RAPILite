@@ -10,6 +10,7 @@ setup(
     version='0.1.1',
     description='An asynchronous wrapper for Reddit\'s readonly API',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/sudosnok/RAPILite',
     license='MIT',
     include_package_data=True,
