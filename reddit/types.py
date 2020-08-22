@@ -43,8 +43,12 @@ class ResponseData:
             task = loop.create_task(coro)
             loop.run_until_complete(task)
             self._data = data = task.result()
-        except RuntimeError: # get_running_loop will raise RuntimeError, so we'll use asyncio.run
-            self_data = data = asyncio.create_task(coro).result()
+        except RuntimeError:  # get_running_loop will raise RuntimeError, so we'll use some other magic
+            new_loop = asyncio.new_event_loop()  # could refactor this down but dont want to lose clarity
+            task = new_loop.create_task(coro)    # that this loop is created solely for this task
+            self._data = data = new_loop.run_until_complete(task)
+            if task.done():
+                new_loop.close()
 
         if target == 'post':
             print(data.keys())
