@@ -43,7 +43,7 @@ class ResponseData:
             task = asyncio.Task(coro, loop=loop)
             self._data = data = task.result()
         except RuntimeError: # get_running_loop will raise RuntimeError, so we'll use asyncio.run
-            self_data = data = asyncio.run(coro)
+            self_data = data = asyncio.create_task(coro).result()
 
         if target == 'post':
             print(data.keys())
