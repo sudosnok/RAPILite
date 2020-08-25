@@ -47,11 +47,15 @@ class Reddit:
             self.target = 'subreddit'
 
     async def _get_response(self, *, override_url: Union[str, None] = None) -> dict:
-        res = await self._cs.get(override_url or self.url)
+        if override_url:
+            url = override_url
+        else:
+            url = self.url
+        res = await self._cs.get(url)
         if res.content_type == 'application/json':
             return await res.json()
         elif res.content_type == 'text/html':
-            res = await self._cs.get(self.url + '.json')
+            res = await self._cs.get(url + '.json')
             return await res.json()
 
     def _load_posts(self) -> None:
