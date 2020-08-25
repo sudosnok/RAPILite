@@ -72,7 +72,10 @@ class PostData:
             if key in containers:
                 setattr(self, key, deque())
             elif key in datetimes:
-                setattr(self, key, utils.parse_dt(value))
+                if value:
+                    setattr(self, key, utils.parse_dt(value))
+                else:
+                    setattr(self, key, value)
             else:
                 setattr(self, key, value)
 
