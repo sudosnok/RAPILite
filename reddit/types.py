@@ -136,7 +136,8 @@ class MediaInfo:
     def __init__(self, data: dict):
         self._data = data
         self.title = self.provider = None
-        self.url = data['url_overridden_by_dest']
+
+        self.url = data.get('url_overridden_by_dest', 'url')
         self.images = deque()
         self.source_image = None
 
