@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
 
-import asyncio
-from typing import Coroutine
 from collections import deque
 
 from reddit import utils
@@ -34,21 +32,10 @@ class ForbiddenUrl(Exception):
 
 
 class ResponseData:
-    def __init__(self, target, sub, coro: Coroutine):
+    def __init__(self, target, sub, data: dict):
+        self._data = data
         self.sub = sub
         self.posts = deque()
-
-        try: # if an event loop is running, make a task and schedule it
-            loop = asyncio.get_running_loop()
-            task = loop.create_task(coro)
-            loop.run_until_complete(task)
-            self._data = data = task.result()
-        except RuntimeError:  # get_running_loop will raise RuntimeError, so we'll use some other magic
-            new_loop = asyncio.new_event_loop()  # could refactor this down but dont want to lose clarity
-            task = new_loop.create_task(coro)    # that this loop is created solely for this task
-            self._data = data = new_loop.run_until_complete(task)
-            if task.done():
-                new_loop.close()
 
         if target == 'post':
             print(data.keys())
@@ -67,9 +54,6 @@ class SubredditData:
         self._data = data
         self.posts = deque()
 
-        self._populate_posts()
-
-    def _populate_posts(self):
         for post in self._data:
             self.posts.append(PostData(post['data']))
 
@@ -81,48 +65,32 @@ class PostData:
     def __init__(self, data: dict):
         self._data = data
 
-        # post data
-        self.sub = data['subreddit']
-        self.title = data['title']
-        self.author = data['author']
-        self.url = r"https://www.reddit.com" + data['permalink']
-        self.posted_at = utils.parse_dt(float(data['created_utc']))
-        try:
-            self.edited_at = utils.parse_dt(float(data['edited_utc']))
-        except KeyError:
-            self.edited_at = None
+        containers = ['all_awardings', 'comments']
+        datetimes = ['created_utc', 'edited_utc', 'banned_at_utc']
 
-        # social stuffs
-        self.upvote_ratio = data['upvote_ratio']
-        self.num_comments = data['num_comments']
-        self.score = data['score']
-        self.awards = deque()
-        self.total_awards = data['total_awards_received']
-        self.score_hidden = data['hide_score']
+        for key, value in data.items():
+            if key in containers:
+                setattr(self, key, deque())
+            elif key in datetimes:
+                setattr(self, key, utils.parse_dt(value))
+            else:
+                setattr(self, key, value)
 
-        # relating to visibility
-        self.locked = data['locked']
-        self.quarantined = data['quarantine']
-        self.nsfw = data['over_18']
-        self.archived = data['archived']
-        self.spoiler = data['spoiler']
-        self.stickied = data['stickied']
+        # for ease of use
+        # noinspection PyUnresolvedReferences
+        self.full_url = 'https://www.reddit.com' + self.permalink
 
         # media info
-        self.media = MediaInfo(data)
-        self.source_image = None or self.media._source_image
-        self.images = self.media.images
+        self.media = media = MediaInfo(data)
+        self.source_image = None or media.source_image
+        self.images = media.images
 
-        # comments
-        self.comments = deque()
-
-        self._populate_awards()
-
-    def _populate_awards(self):
+        # filling out the Award objects
         awards = self._data['all_awardings']
         if awards:
             for award in awards:
-                self.awards.append(Award(award))
+                # noinspection PyUnresolvedReferences
+                self.all_awardings.append(Award(award))
 
     def __repr__(self) -> str:
         return "<{0.__class__.__name__} author='{0.author}' title='{0.title}' num_comments={0.num_comments}>".format(self)
@@ -132,39 +100,33 @@ class Comment:
     def __init__(self, data: dict):
         self._data = data
 
-        self.text = data['body']
-        self.author = data['author']
-        self.is_submitter = data['is_submitter']
-        self.posted_at = utils.parse_dt(data['created_utc'])
-        if isinstance(data['edited'], float):
-            self.edited_at = utils.parse_dt(data['edited'])
-            self.is_edited = True
-        else:
-            self.is_edited = False
-        self.stickied = data['stickied']
+        containers = ['all_awardings', 'replies']
+        datetimes = ['approved_at_utc', 'banned_at_utc', 'created_utc', 'edited_utc']
+        for key, value in data.items():
+            if key in containers:
+                setattr(self, key, deque())
+            elif key in datetimes:
+                setattr(self, key, utils.parse_dt(value))
+            else:
+                setattr(self, key, value)
 
-        self.score = data['score']
-        self.awards = deque()
-        self.total_awards = data['total_awards_received']
-
-        self.replies = deque()
         self._replies_data = replies = data['replies']['data']['children']
         for reply in replies:
+            # noinspection PyUnresolvedReferences
             self.replies.append(self.__class__(reply['data']))
 
-        self.populate_awards()
-
-    def __repr__(self) -> str:
-        return "<{0.__class__.__name__} author='{0.author}' text='{0.text}' score={0.score}>".format(self)
-
-    def __str__(self) -> str:
-        return self.text
-
-    def populate_awards(self):
         awards = self._data['all_awardings']
         if awards:
             for award in awards:
-                self.awards.append(Award(award))
+                # noinspection PyUnresolvedReferences
+                self.all_awardings.append(Award(award))
+
+    def __repr__(self) -> str:
+        return "<{0.__class__.__name__} author='{0.author}' text='{0.body}' score={0.score}>".format(self)
+
+    def __str__(self) -> str:
+        # noinspection PyUnresolvedReferences
+        return self.body
 
 
 class MediaInfo:
@@ -173,7 +135,7 @@ class MediaInfo:
         self.title = self.provider = None
         self.url = data['url_overridden_by_dest']
         self.images = deque()
-        self._source_image = None
+        self.source_image = None
 
         if data['thumbnail'] != 'self':
             self.thumbnail = data['thumbnail']
@@ -200,7 +162,7 @@ class MediaInfo:
         preview = data['preview']
         if preview['enabled']:
             images = preview['images']
-            self._source_image = Image(images[0]['source'])
+            self.source_image = Image(images[0]['source'])
             for image in images[0]['resolutions']:
                 try:
                     self.images.append(Image(image))
@@ -238,17 +200,9 @@ class Image:
 class Award:
     def __init__(self, data: dict):
         self._data = data
-        self.name = data['name']
-        self.description = data['description']
-        self.count = data['count']
 
-        self.icon_url = data['icon_url']
-        self.icon_fmt = data['icon_format']
-        self.icon_dim = (data['icon_width'], data['icon_height'])
-
-        self.days_premium = data['days_of_premium']
-        self.price = data['coin_price']
-        self.reward = data['coin_reward']
+        for key, value in data.items():
+            setattr(self, key, value)
 
     def __repr__(self) -> str:
         return "<{0.__class__.__name__} name='{0.name}' description='{0.description}' count={0.count}>".format(self)
