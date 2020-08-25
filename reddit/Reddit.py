@@ -85,6 +85,7 @@ class Reddit:
             post: types.PostData
             # noinspection PyUnresolvedReferences
             data = await self._get_response(override_url=post.full_url)
+            print('|'.join(data.keys()), '\n', post.full_url)
             comments = deque(data[1]['data']['children'])
             for comment in comments:
                 # noinspection PyUnresolvedReferences
