@@ -64,9 +64,10 @@ class SubredditData:
 class PostData:
     def __init__(self, data: dict):
         self._data = data
+        self.comments = deque()
 
-        containers = ['all_awardings', 'comments']
-        datetimes = ['created_utc', 'edited_utc', 'banned_at_utc']
+        containers = ['all_awardings', ]
+        datetimes = ['created_utc', 'edited_utc', 'banned_at_utc', ]
 
         for key, value in data.items():
             if key in containers:

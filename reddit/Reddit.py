@@ -47,10 +47,7 @@ class Reddit:
             self.target = 'subreddit'
 
     async def _get_response(self, *, override_url: Union[str, None] = None) -> dict:
-        if override_url:
-            url = override_url
-        else:
-            url = self.url
+        url = override_url or self.url
         res = await self._cs.get(url)
         if res.content_type == 'application/json':
             return await res.json()
