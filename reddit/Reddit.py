@@ -35,54 +35,70 @@ BASE_URL = 'https://www.reddit.com/r/'
 
 class Reddit:
     def __init__(self, url: str, *, cs: ClientSession = None):
-        self._start(url, cs=cs)
-
-    def __iter__(self):
-        if not self.posts:
-            self._populate_posts()
-        self._current_post = self.posts[0]
-        return self
-
-    def __next__(self):
-        post = self._current_post
-        try:
-            self._current_post = self.posts[self.posts.index(post) + 1]
-            return post
-        except IndexError:
-            raise StopIteration
-
-    def _start(self, url: str, cs: ClientSession = None):
+        self.last_update = datetime.utcnow()
         self.url = url
         self._cs = cs or ClientSession()
         self.posts = deque()
 
         is_post, self.sub, self.method = utils.is_post(url)
         if is_post:
-            target = 'post'
+            self.target = 'post'
         else:
-            target = 'subreddit'
+            self.target = 'subreddit'
 
-        self._response = types.ResponseData(target, self.sub, self._get_response())
-        self._populate_posts()
-        self._last_update = datetime.utcnow()
+    async def _get_response(self) -> dict:
+        res = await self._cs.get(self.url)
+        if res.content_type == 'application/json':
+            return await res.json()
+        elif res.content_type == 'text/html':
+            res = await self._cs.get(self.url + '.json')
+            return await res.json()
+
+    def _load_posts(self) -> None:
+        if not self.posts:
+            self.posts = self._response.posts
 
     @classmethod
     def from_sub(cls, sub: str, *, method: str = 'hot', cs: ClientSession = None):
+        """
+        Shortcut to allow users to get a picture of the top posts in a given sub with a given filter method
+        :param sub: The subreddit to load from
+        :type sub: str
+        :param method: The sort method of said subreddit
+        :type method: str
+        :param cs: Option to supply your own ClientSession if one is already running
+        :type cs: ClientSession
+
+        :return Reddit:
+        """
         return cls("{}{}/{}".format(BASE_URL, sub, method), cs=cs)
 
-    async def populate_comments(self):
+    async def load_comments(self) -> None:
+        """
+        This makes a call to the API for comment information in each post the url can see
+
+        :return None:
+        """
         if not self.posts:
-            self._populate_posts()
+            self._load_posts()
         for post in self.posts:
             post: types.PostData
-            res = await self._cs.get(post.url)
+            # noinspection PyUnresolvedReferences
+            res = await self._cs.get(post.full_url)
             data = await res.json()
             comments = deque(data[1]['data']['children'])
             for comment in comments:
+                # noinspection PyUnresolvedReferences
                 post.comments.append(types.Comment(comment['data']))
 
-    async def fetch(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
-        out = None
+    async def fetch_media(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
+        """
+        this expects an Image object, as found in post.images
+        :param types.Image image: Image object
+        :param bool to_bytes: Determines if bytes or BytesIO are returned
+
+        :return Union[BytesIO, bytes]:
+        """
         res = await self._cs.get(image.url)
 
         if res.status == 200:
@@ -99,21 +115,17 @@ class Reddit:
         out.seek(0)
         return out
 
-
-    async def _get_response(self) -> dict:
-        res = await self._cs.get(self.url)
-        if res.content_type == 'application/json':
-            return await res.json()
-        elif res.content_type == 'text/html':
-            res = await self._cs.get(self.url + '.json')
-            return await res.json()
-
-    def _populate_posts(self):
-        if not self.posts:
-            self.posts = self._response.posts
-
-
-"""TODO: put types and the two utils functions into their own files"""
-"""TODO: fix the get_event_loop mess in ResponseData"""
-"""TODO: make MediaInfo look for picture data too"""
+    async def load(self, *, comments: bool = True):
+        """
+        This makes the call to Reddit's API to fetch post & comment information
+        :param comments: whether or not to fetch comment data for all posts the original url can see
+        :type comments: bool
+        :return Reddit:
+        """
+        # decided to do the api call here instead of in ResponseData's init to avoid asyncio magic
+        self._response = types.ResponseData(self.target, self.sub, await self._get_response())
+        self._load_posts()
+        if comments:
+            await self.load_comments()
+        return self
 
