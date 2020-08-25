@@ -46,8 +46,8 @@ class Reddit:
         else:
             self.target = 'subreddit'
 
-    async def _get_response(self) -> dict:
-        res = await self._cs.get(self.url)
+    async def _get_response(self, *, override_url: Union[str, None] = None) -> dict:
+        res = await self._cs.get(override_url or self.url)
         if res.content_type == 'application/json':
             return await res.json()
         elif res.content_type == 'text/html':
@@ -84,8 +84,7 @@ class Reddit:
         for post in self.posts:
             post: types.PostData
             # noinspection PyUnresolvedReferences
-            res = await self._cs.get(post.full_url)
-            data = await res.json()
+            data = await self._get_response(override_url=post.full_url)
             comments = deque(data[1]['data']['children'])
             for comment in comments:
                 # noinspection PyUnresolvedReferences
