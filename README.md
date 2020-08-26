@@ -15,8 +15,12 @@ Both the regular class instantiation and classmethod require a call to `.load()`
 to actually fetch the data from Reddit, making this `load` call a coroutine
 
 ---
-The `.load()` coroutine can also take a `comments` kwarg as a bool, setting this to false 
-drastically improves speed, since no limits are placed on comment loading yet
+The `.load()` coroutine can also take a `comments` kwarg as a bool, setting this to True entails many api calls to each
+post the url could see, potentially taking a minute or more
+
+Its for this reason that you should only set `comments=True` if the url provided was a url to a specific post
+
+Due to the exponentially increasing number of API calls to fetch the whole comment history
 
 ---
 Example 1;
