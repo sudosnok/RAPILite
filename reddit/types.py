@@ -135,8 +135,12 @@ class Comment:
 
     def __repr__(self) -> str:
         if len(self.body) >= 40:
-            return "<{0.__class__.__name__} author='{0.author}' text='{1}' score={0.score}>".format(self, self.body[:40])
-        return "<{0.__class__.__name__} author='{0.author}' text='{0.body}' score={0.score}>".format(self)
+            body = self.body[:40]
+        else:
+            body = self.body
+        if hasattr(self, 'author', False):
+            return "<{0.__class__.__name__} author='{0.author}' text='{1}' score={0.score}>".format(self, body)
+        return "<{0.__class__.__name__} author='[deleted]' text='{1}' score={0.score}>".format(self, body)
 
     def __str__(self) -> str:
         return self.body
