@@ -7,7 +7,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='RAPILite',
-    version='0.1.5',
+    version='0.1.6',
     description='An asynchronous wrapper for Reddit\'s readonly API',
     long_description=long_description,
     long_description_content_type='text/markdown',
