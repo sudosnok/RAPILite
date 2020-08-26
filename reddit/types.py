@@ -37,8 +37,7 @@ class ResponseData:
         self.posts = deque()
 
         if target == 'post':
-            print(data.keys())
-            data = data['data']['children'][0]['data']
+            data = data[0]['data']['children'][0]['data']
             self.posts.append(PostData(data))
         else:
             data = data['data']['children']
@@ -138,7 +137,7 @@ class Comment:
             body = self.body[:40]
         else:
             body = self.body
-        if hasattr(self, 'author', False):
+        if hasattr(self, 'author'):
             return "<{0.__class__.__name__} author='{0.author}' text='{1}' score={0.score}>".format(self, body)
         return "<{0.__class__.__name__} author='[deleted]' text='{1}' score={0.score}>".format(self, body)
 

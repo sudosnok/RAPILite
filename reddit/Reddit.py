@@ -21,6 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
+import asyncio
 from io import BytesIO
 from aiohttp import ClientSession
 from datetime import datetime
@@ -32,12 +33,13 @@ from reddit import utils, types
 
 BASE_URL = 'https://www.reddit.com/r/'
 
-
+# noinspection PyUnresolvedReferences
 class Reddit:
     def __init__(self, url: str, *, cs: ClientSession = None):
         self.last_update = datetime.utcnow()
         self.url = url
         self._cs = cs or ClientSession()
+        self._comment_depth = 25
         self.posts = deque()
 
         is_post, self.sub, self.method = utils.is_post(url)
@@ -54,6 +56,10 @@ class Reddit:
         elif res.content_type == 'text/html':
             res = await self._cs.get(url + '.json')
             return await res.json()
+
+    async def _get_posts(self, urls: list):
+        posts = asyncio.gather(*[self._get_response(override_url=url) for url in urls])
+        return posts
 
     def _load_posts(self) -> None:
         if not self.posts:
@@ -82,14 +88,19 @@ class Reddit:
         """
         if not self.posts:
             self._load_posts()
-        for post in self.posts:
-            post: types.PostData
-            # noinspection PyUnresolvedReferences
-            data = await self._get_response(override_url=post.full_url)
-            comments = deque(data[1]['data']['children'])
+        now = datetime.utcnow()
+        urls = [post.full_url for post in self.posts]
+        posts = await (await self._get_posts(urls))
+        print('got posts :', datetime.utcnow() - now)
+        # now `posts` is a list of the json from each post [0] is post, [1] is comments
+        for count, post in enumerate(posts):
+            comments = post[1]['data']['children']
             for comment in comments:
-                # noinspection PyUnresolvedReferences
-                post.comments.append(types.Comment(comment['data']))
+                if comment['kind'] == 'more':
+                    # no way i can see to load the rest of the comments
+                    break
+                else:
+                    self.posts[count].comments.append(types.Comment(comment['data']))
 
     async def fetch_media(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
         """
@@ -115,7 +126,7 @@ class Reddit:
         out.seek(0)
         return out
 
-    async def load(self, *, comments: bool = True):
+    async def load(self, *, comments: bool = False):
         """
         This makes the call to Reddit's API to fetch post & comment information
         :param comments: whether or not to fetch comment data for all posts the original url can see
@@ -123,10 +134,13 @@ class Reddit:
         :return Reddit:
         """
         # decided to do the api call here instead of in ResponseData's init to avoid asyncio magic
+        now = datetime.utcnow()
         self._response = types.ResponseData(self.target, self.sub, await self._get_response())
         self._load_posts()
+        print('posts loaded & response got :', datetime.utcnow() - now)
         if comments:
             await self.load_comments()
+        print('total time :', datetime.utcnow() - now)
         return self
 
 
