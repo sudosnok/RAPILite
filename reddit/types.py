@@ -21,7 +21,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
-
 from collections import deque
 
 from reddit import utils
@@ -100,6 +99,7 @@ class PostData:
         return "<{0.__class__.__name__} author='{0.author}' title='{0.title}' num_comments={0.num_comments}>".format(self)
 
 
+# noinspection PyUnresolvedReferences
 class Comment:
     def __init__(self, data: dict):
         self._data = data
@@ -117,22 +117,28 @@ class Comment:
             else:
                 setattr(self, key, value)
 
-        self._replies_data = replies = data['replies']['data']['children']
-        for reply in replies:
-            # noinspection PyUnresolvedReferences
-            self.replies.append(self.__class__(reply['data']))
+        try:
+            if data['replies']:
+                self._replies_data = replies = data['replies']['data']['children']
+                for reply in replies:
+                    self.replies.append(self.__class__(reply['data']))
+        except KeyError:
+            pass
 
-        awards = self._data['all_awardings']
-        if awards:
-            for award in awards:
-                # noinspection PyUnresolvedReferences
-                self.all_awardings.append(Award(award))
+        try:
+            awards = self._data['all_awardings']
+            if awards:
+                for award in awards:
+                    self.all_awardings.append(Award(award))
+        except KeyError:
+            pass
 
     def __repr__(self) -> str:
+        if len(self.body) >= 40:
+            return "<{0.__class__.__name__} author='{0.author}' text='{1}' score={0.score}>".format(self, self.body[:40])
         return "<{0.__class__.__name__} author='{0.author}' text='{0.body}' score={0.score}>".format(self)
 
     def __str__(self) -> str:
-        # noinspection PyUnresolvedReferences
         return self.body
 
 
@@ -141,7 +147,7 @@ class MediaInfo:
         self._data = data
         self.title = self.provider = None
 
-        self.url = data.get('url_overridden_by_dest', 'url')
+        self.url = data.get('url_overridden_by_dest', data.get('url', None))
         self.images = deque()
         self.source_image = None
 

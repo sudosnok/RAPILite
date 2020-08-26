@@ -129,3 +129,7 @@ class Reddit:
             await self.load_comments()
         return self
 
+
+"""TODO; add some limits to comment loading, shit takes too long if there are lots of comments/replies
+    re ^; maybe limit how deep into the nest of replies to go somehow"""
+
