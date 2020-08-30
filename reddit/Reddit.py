@@ -33,7 +33,7 @@ from reddit import utils, types
 
 BASE_URL = 'https://www.reddit.com/r/'
 
-# noinspection PyUnresolvedReferences
+
 class Reddit:
     def __init__(self, url: str, *, cs: ClientSession = None):
         self.last_update = datetime.utcnow()
@@ -88,10 +88,8 @@ class Reddit:
         """
         if not self.posts:
             self._load_posts()
-        now = datetime.utcnow()
         urls = [post.full_url for post in self.posts]
         posts = await (await self._get_posts(urls))
-        print('got posts :', datetime.utcnow() - now)
         # now `posts` is a list of the json from each post [0] is post, [1] is comments
         for count, post in enumerate(posts):
             comments = post[1]['data']['children']
@@ -103,7 +101,7 @@ class Reddit:
                     self.posts[count].comments.append(types.Comment(comment['data']))
 
     async def fetch_media(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
-        """
+        """ # will move this onto the Image objects soon, makes more sense there
         this expects an Image object, as found in post.images
         :param types.Image image: Image object
         :param bool to_bytes: Determines if bytes or BytesIO are returned
@@ -134,16 +132,9 @@ class Reddit:
         :return Reddit:
         """
         # decided to do the api call here instead of in ResponseData's init to avoid asyncio magic
-        now = datetime.utcnow()
         self._response = types.ResponseData(self.target, self.sub, await self._get_response())
         self._load_posts()
-        print('posts loaded & response got :', datetime.utcnow() - now)
         if comments:
             await self.load_comments()
-        print('total time :', datetime.utcnow() - now)
         return self
-
-
-"""TODO; add some limits to comment loading, shit takes too long if there are lots of comments/replies
-    re ^; maybe limit how deep into the nest of replies to go somehow"""
 
