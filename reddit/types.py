@@ -21,18 +21,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
+from aiohttp import ClientSession
 from collections import deque
+import io
+from typing import Union
 
 from reddit import utils
 
 
-class ForbiddenUrl(Exception):
-    pass
-
-
 class ResponseData:
-    def __init__(self, target, sub, data: dict):
+    def __init__(self, target, sub, data: dict, cs: ClientSession):
         self._data = data
+        self._cs = cs
         self.sub = sub
         self.posts = deque()
 
@@ -41,27 +41,29 @@ class ResponseData:
             self.posts.append(PostData(data))
         else:
             data = data['data']['children']
-            subreddit = SubredditData(sub, data)
+            subreddit = SubredditData(sub, data, self._cs)
             self.posts.extend(subreddit.posts)
             pass
 
 
 class SubredditData:
-    def __init__(self, sub, data: dict):
+    def __init__(self, sub, data: dict, cs: ClientSession):
         self.sub = sub
+        self._cs = cs
         self._data = data
         self.posts = deque()
 
         for post in self._data:
-            self.posts.append(PostData(post['data']))
+            self.posts.append(PostData(post['data'], self._cs))
 
     def __repr__(self) -> str:
         return "<{0.__class__.__name__} sub='{0.sub}' posts={1}>".format(self, len(self.posts))
 
 
 class PostData:
-    def __init__(self, data: dict):
+    def __init__(self, data: dict, cs: ClientSession):
         self._data = data
+        self._cs = cs
         self.comments = deque()
 
         containers = ['all_awardings', ]
@@ -79,11 +81,10 @@ class PostData:
                 setattr(self, key, value)
 
         # for ease of use
-        # noinspection PyUnresolvedReferences
         self.full_url = 'https://www.reddit.com' + self.permalink
 
         # media info
-        self.media = media = MediaInfo(data)
+        self._media = media = MediaInfo(data)
         self.source_image = None or media.source_image
         self.images = media.images
 
@@ -91,14 +92,29 @@ class PostData:
         awards = self._data['all_awardings']
         if awards:
             for award in awards:
-                # noinspection PyUnresolvedReferences
                 self.all_awardings.append(Award(award))
 
     def __repr__(self) -> str:
         return "<{0.__class__.__name__} author='{0.author}' title='{0.title}' num_comments={0.num_comments}>".format(self)
 
+    async def fetch_image(self, *, raw_bytes: bool = True) -> Union[bytes, io.BytesIO]:
+        """
+        Returns raw bytes or a BytesIO object of a specific image in the post
+        :param bool raw_bytes:  whether to return a bytes object or an io.BytesIO object
+        :return: Union[bytes, io.BytesIO]
+        """
 
-# noinspection PyUnresolvedReferences
+        res = await self._cs.get(self.media.url)
+        image = await res.read()
+
+        if raw_bytes:
+            return image
+
+        out = io.BytesIO(image)
+        out.seek(0)
+        return out
+
+
 class Comment:
     def __init__(self, data: dict):
         self._data = data
@@ -133,13 +149,15 @@ class Comment:
             pass
 
     def __repr__(self) -> str:
-        if len(self.body) >= 40:
-            body = self.body[:40]
-        else:
-            body = self.body
-        if hasattr(self, 'author'):
-            return "<{0.__class__.__name__} author='{0.author}' text='{1}' score={0.score}>".format(self, body)
-        return "<{0.__class__.__name__} author='[deleted]' text='{1}' score={0.score}>".format(self, body)
+        if self.body:
+            if len(self.body) >= 40:
+                body = self.body[:40]
+            else:
+                body = self.body
+            if hasattr(self, 'author'):
+                return "<{0.__class__.__name__} author='{0.author}' body='{1}' score={0.score}>".format(self, body)
+            return "<{0.__class__.__name__} author='[deleted]' body='{1}' score={0.score}>".format(self, body)
+        return "<{0.__class__.__name__} author='{0.author}' body=None score={0.score}".format(self)
 
     def __str__(self) -> str:
         return self.body
@@ -157,10 +175,10 @@ class MediaInfo:
         if data['thumbnail'] != 'self':
             self.thumbnail = data['thumbnail']
 
-        if not data['secure_media']:
-            return
-
-        post_hint = data['post_hint']
+        try:
+            post_hint = data['post_hint']
+        except KeyError:
+            post_hint = None
 
         if post_hint == 'image':
             self._get_image_info()
@@ -172,19 +190,11 @@ class MediaInfo:
         return self.url
 
     def __repr__(self) -> str:
-        return "<{0.__class__.__name__} title='{0.title}' provider='{0.provider}' url={0.url}>".format(self)
+        return "<{0.__class__.__name__} title='{0.title}' provider='{0.provider}' url='{0.url}'>".format(self)
 
     def _get_image_info(self):
         data: dict = self._data
-        preview = data['preview']
-        if preview['enabled']:
-            images = preview['images']
-            self.source_image = Image(images[0]['source'])
-            for image in images[0]['resolutions']:
-                try:
-                    self.images.append(Image(image))
-                except KeyError:
-                    break
+        self.source_image = Image(data['preview']['images'][0]['source'])
 
     def _get_video_info(self):
         data: dict = self._data

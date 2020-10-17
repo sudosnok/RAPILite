@@ -22,9 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."""
 
 
-from reddit.Reddit import Reddit
+class ForbiddenUrl(ValueError):
+    pass
 
 
-__title__ = 'RAPILite'
-__author__ = 'sudosnok'
-__version__= '0.1.8'
+class InvalidTimeFrame(ValueError):
+    pass
+
+
+class InvalidSortMethod(ValueError):
+    pass

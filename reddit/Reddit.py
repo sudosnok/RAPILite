@@ -28,10 +28,20 @@ from datetime import datetime
 from collections import deque
 from typing import Union
 
-from reddit import utils, types
+from reddit import utils, types, exceptions
 
 
 BASE_URL = 'https://www.reddit.com/r/'
+ALLOWED_TIMEFRAMES: dict = {
+    'now': '?t=hour',
+    'hour': '?t=hour',
+    'today': '?t=day',
+    'week': '?t=week',
+    'month': '?t=month',
+    'year': '?t=year',
+    'all': '?t=all'
+}
+ALLOWED_METHODS: tuple = ('hot', 'new', 'top', 'rising', 'controversial')
 
 
 class Reddit:
@@ -39,7 +49,6 @@ class Reddit:
         self.last_update = datetime.utcnow()
         self.url = url
         self._cs = cs or ClientSession()
-        self._comment_depth = 25
         self.posts = deque()
 
         is_post, self.sub, self.method = utils.is_post(url)
@@ -66,18 +75,27 @@ class Reddit:
             self.posts = self._response.posts
 
     @classmethod
-    def from_sub(cls, sub: str, *, method: str = 'hot', cs: ClientSession = None):
+    def from_sub(cls, sub: str, *, method: str = 'hot', timeframe: str = None, cs: ClientSession = None):
         """
         Shortcut to allow users to get a picture of the top posts in a given sub with a given filter method
         :param sub: The subreddit to load from
         :type sub: str
         :param method: The sort method of said subreddit
         :type method: str
+        :param timeframe: The time filtering to apply to the search
+        :type timeframe: str
         :param cs: Option to supply your own ClientSession if one is already running
         :type cs: ClientSession
 
         :return Reddit:
         """
+        if timeframe:
+            if timeframe not in ALLOWED_TIMEFRAMES:
+                raise exceptions.InvalidTimeFrame("Expected one of {}, got {} instead".format(' '.join(ALLOWED_TIMEFRAMES.keys()), timeframe))
+            else:
+                return cls("{}{}/{}/{}".format(BASE_URL, sub, method, ALLOWED_TIMEFRAMES[timeframe]))
+        if method not in ALLOWED_METHODS:
+            raise exceptions.InvalidSortMethod("Expected one of {}, got {} instead".format(' '.join(ALLOWED_METHODS), method))
         return cls("{}{}/{}".format(BASE_URL, sub, method), cs=cs)
 
     async def load_comments(self) -> None:
@@ -95,10 +113,22 @@ class Reddit:
             comments = post[1]['data']['children']
             for comment in comments:
                 if comment['kind'] == 'more':
-                    # no way i can see to load the rest of the comments
+                    # no way i can see to load the rest of the comments, will fix
                     break
                 else:
                     self.posts[count].comments.append(types.Comment(comment['data']))
+
+    async def change_sub(self, sub: str, *, method: str = 'hot', timeframe: str = None, comments: bool = False):
+        if timeframe:
+            if timeframe not in ALLOWED_TIMEFRAMES:
+                raise exceptions.InvalidTimeFrame("Expected one of {}, got {} instead".format(' '.join(ALLOWED_TIMEFRAMES.keys()), timeframe))
+            else:
+                cls = self.__class__("{}{}/{}/{}".format(BASE_URL, sub, method, timeframe), cs=self._cs)
+                return await cls.load(comments=comments)
+        if method not in ALLOWED_METHODS:
+            raise exceptions.InvalidSortMethod("Expected one of {}, got {} instead".format(' '.join(ALLOWED_METHODS), method))
+        cls = self.__class__("{}{}/{}".format(BASE_URL, sub, method))
+        return await cls.load(comments=comments)
 
     async def fetch_media(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
         """ # will move this onto the Image objects soon, makes more sense there
@@ -113,7 +143,7 @@ class Reddit:
         if res.status == 200:
             out = await res.read()
         elif res.status == 403:
-            raise types.ForbiddenUrl("The url tied to this image returns 403 Forbidden; \n{0}".format(image.url))
+            raise exceptions.ForbiddenUrl("The url tied to this image returns 403 Forbidden; \n{0}".format(image.url))
         else:
             raise NotImplemented
 
@@ -132,7 +162,7 @@ class Reddit:
         :return Reddit:
         """
         # decided to do the api call here instead of in ResponseData's init to avoid asyncio magic
-        self._response = types.ResponseData(self.target, self.sub, await self._get_response())
+        self._response = types.ResponseData(self.target, self.sub, await self._get_response(), cs=self._cs)
         self._load_posts()
         if comments:
             await self.load_comments()
