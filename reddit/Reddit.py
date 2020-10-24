@@ -26,6 +26,7 @@ from io import BytesIO
 from aiohttp import ClientSession
 from datetime import datetime
 from collections import deque
+import random as _rand
 from typing import Union
 
 from reddit import utils, types, exceptions
@@ -48,7 +49,7 @@ class Reddit:
     def __init__(self, url: str, *, cs: ClientSession = None):
         self.last_update = datetime.utcnow()
         self.url = url
-        self._cs = cs or ClientSession()
+        self._cs = cs or ClientSession(headers={})
         self.posts = deque()
 
         is_post, self.sub, self.method = utils.is_post(url)
@@ -117,6 +118,11 @@ class Reddit:
                     break
                 else:
                     self.posts[count].comments.append(types.Comment(comment['data']))
+
+    def random(self):
+        if not self.posts:
+            self._load_posts()
+        return _rand.choice(self.posts)
 
     async def change_sub(self, sub: str, *, method: str = 'hot', timeframe: str = None, comments: bool = False):
         if timeframe:
