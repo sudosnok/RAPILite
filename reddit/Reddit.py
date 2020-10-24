@@ -49,7 +49,7 @@ class Reddit:
     def __init__(self, url: str, *, cs: ClientSession = None):
         self.last_update = datetime.utcnow()
         self.url = url
-        self._cs = cs or ClientSession(headers={})
+        self._cs = cs or ClientSession()
         self.posts = deque()
 
         is_post, self.sub, self.method = utils.is_post(url)
