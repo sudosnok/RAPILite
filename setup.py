@@ -23,5 +23,5 @@ setup(
     ],
     packages=['reddit'],
     python_requires=">=3.6",
-    install_requires=['aiohttp==3.6.2'],
+    install_requires=['aiohttp>=3.6.2'],
 )
