@@ -133,7 +133,7 @@ class Reddit:
                 return await cls.load(comments=comments)
         if method not in ALLOWED_METHODS:
             raise exceptions.InvalidSortMethod("Expected one of {}, got {} instead".format(' '.join(ALLOWED_METHODS), method))
-        cls = self.__class__("{}{}/{}".format(BASE_URL, sub, method))
+        cls = self.__class__("{}{}/{}".format(BASE_URL, sub, method), cs=self._cs)
         return await cls.load(comments=comments)
 
     async def fetch_media(self, image: types.Image, *, to_bytes: bool = False) -> Union[BytesIO, bytes]:
